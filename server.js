@@ -26,6 +26,30 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.get("/health/db", async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ error: "DATABASE_URL missing" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT NOW() AS time, to_regclass('public.campaigns') AS campaigns_table"
+    );
+
+    res.json({
+      status: "connected",
+      databaseTime: result.rows[0].time,
+      campaignsTable: result.rows[0].campaigns_table
+    });
+  } catch (error) {
+    console.error("Database check failed:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+});
+
 app.get("/api/campaigns", async (req, res) => {
   if (!pool) {
     return res.status(503).json({ error: "Database not configured" });
@@ -33,11 +57,15 @@ app.get("/api/campaigns", async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT * FROM campaigns ORDER BY "createdAt" DESC'
+      'SELECT * FROM public.campaigns ORDER BY "createdAt" DESC'
     );
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Could not load campaigns" });
+    console.error("Campaign query failed:", error.message);
+    res.status(500).json({
+      error: "Could not load campaigns",
+      detail: error.message
+    });
   }
 });
 
@@ -48,11 +76,15 @@ app.get("/api/leads", async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT * FROM leads ORDER BY "createdAt" DESC'
+      'SELECT * FROM public.leads ORDER BY "createdAt" DESC'
     );
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Could not load leads" });
+    console.error("Lead query failed:", error.message);
+    res.status(500).json({
+      error: "Could not load leads",
+      detail: error.message
+    });
   }
 });
 
